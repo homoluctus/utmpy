@@ -1,29 +1,23 @@
 import sys
 import unittest
+import ctypes
 from io import StringIO
-
-sys.path.append('/app/utmpy')
-import utmpy
+sys.path.append('../')
+from pyutmp.utmpy import utmpy
 
 class TestUtmp(unittest.TestCase):
-    def setUp(self):
-        self.utmp = utmpy.UtmpHandler()
-        self.captured_stdout = StringIO()
-        sys.stdout = self.captured_stdout
+    def test_utmp_status(self):
+        status = str(utmpy.UTMPStatus(0))
+        self.assertEqual('empty', status)
 
-    def tearDown(self):
-        sys.stdout = sys.__stdout__
+    def test_utmp_struct(self):
+        byte_num = utmpy.UTMPStruct()
+        self.assertTrue(isinstance(byte_num, ctypes.Structure))
 
-    def test_utmp_load(self):
-        self.assertRaises(FileNotFoundError, self.utmp.load, "none.log")
 
-    def test_utmp_dump_json(self):
-        self.utmp.dump(data={1:1, 2:2, 3:3})
-        self.assertEqual(self.captured_stdout.getvalue(), '{\n    "1": 1,\n    "2": 2,\n    "3": 3\n}\n')
-
-    def test_utmp_dump_yaml(self):
-        self.utmp.dump(data=[1, 2, 3], fmt='yaml')
-        self.assertEqual(self.captured_stdout.getvalue(), '- 1\n- 2\n- 3\n\n')
+    def test_utmp_parse(self):
+        utmp = utmpy.UtmpHandler()
+        self.assertRaises(FileNotFoundError, utmp.parse, "none.log")
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
