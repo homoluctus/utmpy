@@ -8,7 +8,7 @@ from collections import namedtuple
 from ctypes import *
 from enum import Enum
 
-class UTMP(Structure):
+class UTMPStruct(Structure):
     _fields_ = [("ut_type", c_short),
                 ("ut_pid", c_int),
                 ("ut_line", c_char*32),
@@ -20,7 +20,7 @@ class UTMP(Structure):
                 ("ut_session", c_int32),
                 ("tv_sec", c_int32),
                 ("tv_usec", c_int32),
-                ("ut_addr_v6", c_char*4),
+                ("ut_addr_v6", c_int32*4),
                 ("__unused", c_char*20),]
 
 class UTMPStatus(Enum):
@@ -35,37 +35,36 @@ class UTMPStatus(Enum):
     dead        = 8
     accounting  = 9
 
+    def __str__(self):
+        return self.name
+
 class UtmpHandler:
     def __init__(self):
         self._data = {}
 
-    def load(self, path):
+    def parse(self, path):
         count = 1
+        utmp = UTMPStruct()
 
-        fd = open(path, 'rb')
-        while True:
-            utmp = UTMP()
-            if fd.readinto(utmp) is None:
-                break
-            convertd_data = dict((field, getattr(utmp, field)) for field, _ in utmp._fields_)
-            #convertd_data['ut_type'] = UTMPStatus(convertd_data['ut_type'])
-            #convertd_data['tv_sec']  = str(datetime.fromtimestamp(convertd_data['tv_sec']))
-            self._data[count] = convertd_data
-            count += 1
+        with open(path, 'rb') as f:
+            while True:
+                if f.readinto(utmp) <= 0:
+                    break
+                data = dict((field, self._decode(getattr(utmp, field))) for field, _ in utmp._fields_)
+                data['ut_addr_v6'] = '.'.join(map(str, utmp.ut_addr_v6))
+                data['ut_type'] = str(UTMPStatus(utmp.ut_type))
+                data['tv_sec'] = str(datetime.fromtimestamp(utmp.tv_sec))
+                self._data[count] = data
+                count += 1
 
-        fd.close()
         return self._data
 
-    def _normalize_data(self, raw_data, fmt='utf-8'):
-        if isinstance(raw_data, bytes):
-            return raw_data.rstrip(b'\0').decode(fmt)
-        else:
-            return raw_data
+    def _decode(self, value):
+        if isinstance(value, bytes):
+            return value.decode()
+        return value
 
-    def dump(self, data=None, dst="stdout", fmt="json", append=False):
-        if data:
-            self._data = data
-
+    def dump(self, dst="stdout", fmt="json", append=False):
         try:
             formatted_data = self.format_data(fmt)
         except ValueError as err:
@@ -78,8 +77,6 @@ class UtmpHandler:
                 write_file(formatted_data, dst, append)
             except Exception as err:
                 sys.exit(err)
-        
-        return
 
     def format_data(self, fmt):
         """
@@ -106,8 +103,8 @@ def write_file(self, data, dst, append=False):
 
 def dump(src, **kwargs):
     utmp = UtmpHandler()
-    utmp.load(src)
-    return utmp.dump(**kwargs)
+    utmp.parse(src)
+    utmp.dump(**kwargs)
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -125,10 +122,7 @@ def get_args():
 
 def main():
     args = get_args()
-    dump(src=args.src, dst=args.dst, fmt=args.format,append=args.append)
+    dump(src=args.src, dst=args.dst, fmt=args.format, append=args.append)
 
 if __name__ == '__main__':
-    #main()
-    utmp_handler = UtmpHandler()
-    utmp = utmp_handler.load("/root/app/tests/utmp1.log")
-    print(utmp)
+    main()
