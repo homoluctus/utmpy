@@ -74,7 +74,7 @@ class UtmpHandler:
             print(formatted_data)
         else:
             try:
-                write_file(formatted_data, dst, append)
+                self.write_file(formatted_data, dst, append)
             except Exception as err:
                 sys.exit(err)
 
@@ -92,14 +92,14 @@ class UtmpHandler:
 
         return formatted_data
 
-def write_file(data, dst, append=False):
-    if append:
-        mode = "a"
-    else:
-        mode = "w"
+    def write_file(self, data, dst, append=False):
+        if append:
+            mode = "a"
+        else:
+            mode = "w"
 
-    with open(dst, mode) as f:
-        f.write(data)
+        with open(dst, mode) as f:
+            f.write(data)
 
 def dump(src, **kwargs):
     utmp = UtmpHandler()
@@ -120,9 +120,6 @@ def get_args():
 
     return parser.parse_args()
 
-def main():
+if __name__ == '__main__':
     args = get_args()
     dump(src=args.src, dst=args.dst, fmt=args.format, append=args.append)
-
-if __name__ == '__main__':
-    main()
