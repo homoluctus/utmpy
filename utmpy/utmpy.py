@@ -92,7 +92,7 @@ class UtmpHandler:
 
         return formatted_data
 
-def write_file(self, data, dst, append=False):
+def write_file(data, dst, append=False):
     if append:
         mode = "a"
     else:
